@@ -1,0 +1,309 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fusionauth-depl
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fusionauth
+  template:
+    metadata:
+      labels:
+        app: fusionauth
+    spec:
+      initContainers:
+        - name: wait-for-db
+          image: busybox:1.32
+          args:
+            - /bin/sh
+            - -c
+            - >
+              set -x;
+              while [[ "$(nc -zv 'fusion-mysql-srv' 3306 &> /dev/null; echo $?)" != 0 ]]; do
+                echo '.'
+                sleep 15;
+              done
+      containers:
+        - name: fusionauth
+          image: fusionauth/fusionauth-app:1.25.0
+          # resources:
+          #   limits:
+          #     memory: "1024m"
+          #     cpu: "2000m"
+          ports:
+            - containerPort: 9011
+          env:
+            - name: DATABASE_URL
+              value: jdbc:mysql://fusion-mysql-srv:3306/fusionauth
+            - name: DATABASE_ROOT_USERNAME
+              value: root
+            - name: DATABASE_ROOT_PASSWORD
+              value: password
+            - name: DATABASE_USERNAME
+              value: root
+            - name: DATABASE_PASSWORD
+              value: password
+            - name: FUSIONAUTH_APP_MEMORY
+              value: 128M
+            - name: FUSIONAUTH_APP_RUNTIME_MODE
+              value: development
+            - name: FUSIONAUTH_APP_URL
+              value: http://fusionauth.local:9011
+            - name: SEARCH_TYPE
+              value: database
+            - name: DATABASE_MYSQL_ENFORCE_UTF8MB4
+              value: "false"
+            - name: FUSIONAUTH_APP_KICKSTART_FILE
+              value: /usr/local/fusionauth/kickstart/kickstart.json
+          volumeMounts:
+            - name: fusionauth-config-volume
+              mountPath: /usr/local/fusionauth/kickstart
+      volumes:
+        - name: fusionauth-config-volume
+          configMap:
+            name: fusionauth-kickstart-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fusionauth-srv
+spec:
+  selector:
+    app: fusionauth
+  ports:
+    - name: admin
+      protocol: TCP
+      port: 9011
+      targetPort: 9011
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fusionauth-kickstart-config
+data:
+  kickstart.json: |
+    {
+      "variables": {
+        "adminEmail": "admin@hooli.devvl",
+        "password": "password",
+      },
+      "apiKeys": [
+        {
+          "key": "bf69486b-4733-4470-a592-f1bfce7af580",
+          "description": "Standard development API key"
+        }
+      ],
+      "requests": [
+        {
+          "method": "POST",
+          "url": "/api/application",
+          "body": {
+            "application": {
+              "name": "Pied Piper",
+              "roles": [
+                {
+                  "name": "dev"
+                },
+                {
+                  "name": "ceo"
+                },
+                {
+                  "name": "intern"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "url": "/api/user/registration",
+          "body": {
+            "user": {
+              "birthDate": "1981-06-04",
+              "email": "#{adminEmail}",
+              "firstName": "Erlich",
+              "lastName": "Bachman",
+              "password": "#{password}",
+              "data": {
+                "Company": "Hooli",
+                "PreviousCompany": "Aviato",
+                "user_type": "iconclast"
+              }
+            },
+            "registration": {
+              "applicationId": "#{FUSIONAUTH_APPLICATION_ID}",
+              "roles": [
+                "admin"
+              ]
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "url": "/api/user/registration",
+          "body": {
+            "user": {
+              "email": "jared@hooli.devvl",
+              "firstName": "Jared",
+              "lastName": "Dunn",
+              "password": "#{password}",
+              "data": {
+                "Company": "Hooli"
+              },
+              "imageUrl": "https://gravatar.com/avatar/d9d3753ccd95843e35ddac9f4dac7e13?s=400&d=robohash&r=x"
+            },
+            "registration": {
+              "applicationId": "#{FUSIONAUTH_APPLICATION_ID}",
+              "roles": [
+                "admin"
+              ]
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "url": "/api/user/registration",
+          "body": {
+            "user": {
+              "email": "nelson@hooli.devvl",
+              "firstName": "Nelson",
+              "lastName": "Bighetti",
+              "password": "#{password}",
+              "data": {
+                "Company": "Hooli"
+              },
+              "imageUrl": "https://gravatar.com/avatar/d9d3753ccd95843e35ddac9f4dac7e13?s=400&d=robohash&r=x"
+            },
+            "registration": {
+              "applicationId": "#{FUSIONAUTH_APPLICATION_ID}",
+              "roles": [
+                "admin"
+              ]
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "url": "/api/user/registration",
+          "body": {
+            "user": {
+              "email": "dinesh@hooli.devvl",
+              "firstName": "Dinish",
+              "lastName": "Chugtai",
+              "password": "#{password}",
+              "data": {
+                "Company": "Hooli"
+              },
+              "imageUrl": "https://gravatar.com/avatar/d9d3753ccd95843e35ddac9f4dac7e13?s=400&d=robohash&r=x"
+            },
+            "registration": {
+              "applicationId": "#{FUSIONAUTH_APPLICATION_ID}",
+              "roles": [
+                "admin"
+              ]
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "url": "/api/user/registration",
+          "body": {
+            "user": {
+              "email": "gilfoyle@hooli.devvl",
+              "firstName": "Bertram",
+              "lastName": "Gilfoyle",
+              "password": "#{password}",
+              "data": {
+                "Company": "Hooli"
+              },
+              "imageUrl": "https://gravatar.com/avatar/d9d3753ccd95843e35ddac9f4dac7e13?s=400&d=robohash&r=x"
+            },
+            "registration": {
+              "applicationId": "#{FUSIONAUTH_APPLICATION_ID}",
+              "roles": [
+                "admin"
+              ]
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "url": "/api/user/registration",
+          "body": {
+            "user": {
+              "email": "richard@hooli.devvl",
+              "firstName": "Richard",
+              "lastName": "Hendricks",
+              "password": "#{password}",
+              "data": {
+                "Company": "Hooli"
+              },
+              "imageUrl": "https://gravatar.com/avatar/d9d3753ccd95843e35ddac9f4dac7e13?s=400&d=robohash&r=x"
+            },
+            "registration": {
+              "applicationId": "#{FUSIONAUTH_APPLICATION_ID}",
+              "roles": [
+                "admin"
+              ]
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "url": "/api/user/registration",
+          "body": {
+            "user": {
+              "email": "monica@hooli.devvl",
+              "firstName": "Monica",
+              "lastName": "Hall",
+              "password": "#{password}",
+              "data": {
+                  "Company": "Hooli"
+              },
+              "imageUrl": "https://gravatar.com/avatar/d9d3753ccd95843e35ddac9f4dac7e13?s=400&d=robohash&r=x"
+            },
+            "registration": {
+              "applicationId": "#{FUSIONAUTH_APPLICATION_ID}",
+              "roles": [
+                "admin"
+              ]
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "url": "/api/user/registration",
+          "body": {
+            "user": {
+              "email": "jian@hooli.devvl",
+              "firstName": "Jìan",
+              "lastName": "Yáng",
+              "password": "#{password}",
+              "data": {
+                "Company": "Hooli"
+              },
+              "imageUrl": "https://gravatar.com/avatar/d9d3753ccd95843e35ddac9f4dac7e13?s=400&d=robohash&r=x"
+            },
+            "registration": {
+              "applicationId": "#{FUSIONAUTH_APPLICATION_ID}",
+              "roles": [
+                "admin"
+              ]
+            }
+          }
+        },
+        {
+          "method": "PATCH",
+          "url": "/api/tenant/#{FUSIONAUTH_TENANT_ID}",
+          "body": {
+            "tenant": {
+              "emailConfiguration": {
+                "host": "mailslurper-srv",
+                "port": "2500"
+              }
+            }
+          }
+        }
+      ]
+    }
